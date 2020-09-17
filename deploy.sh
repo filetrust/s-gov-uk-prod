@@ -14,6 +14,7 @@ else
     sudo chmod +x /usr/local/bin/docker-compose
     sudo systemctl enable --now docker
     rm get-docker.sh
+
 fi
 
 # get code and deploy
