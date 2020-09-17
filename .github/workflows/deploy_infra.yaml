@@ -1,7 +1,10 @@
 on:
-  push:
-    branches:
-      - master
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Pass input as 'apply' to deploy infra"
+        required: true
+        default: 'plan'
 
 name: Deploy Infra to AWS
 
@@ -34,6 +37,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "Terraform Apply"
+        if: github.event.inputs.action == 'apply'
         uses: hashicorp/terraform-github-actions@master
         with:
           tf_actions_version: 0.13.3

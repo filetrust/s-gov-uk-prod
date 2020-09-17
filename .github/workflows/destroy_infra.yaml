@@ -1,10 +1,10 @@
 on:
-  repository_dispatch:
+  workflow_dispatch:
     inputs:
       action:
-        description: 'Terraform action'
-        required: false
-        default: 'destroy'
+        description: 'Pass destroy as action to delete infra'
+        required: true
+        default: 'plan'
 
 name: Destroy Infra
 
@@ -54,6 +54,7 @@ jobs:
           TF_VAR_instance_type: ${{ secrets.instance_type }}
 
       - name: 'Terraform Apply Destroy'
+        if: github.event.inputs.action == 'destroy'
         uses: hashicorp/terraform-github-actions@master
         with:
           tf_actions_version: 0.13.3
