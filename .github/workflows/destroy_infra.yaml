@@ -1,0 +1,65 @@
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Pass input as 'destroy' to delete infra"
+        required: true
+        default: 'plan'
+
+name: Destroy Infra
+
+jobs:
+  deploy:
+    name: Destroy Infra
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+
+      - name: "Terraform Init"
+        uses: hashicorp/terraform-github-actions@master
+        with:
+          tf_actions_version: 0.13.3
+          tf_actions_subcommand: "init"
+          tf_actions_working_dir: "infrastructure/terraform"
+          tf_actions_comment: false
+          args: '-backend-config="bucket=${{ secrets.BACKEND_BUCKET }}" -backend-config="key=terraform.tfstate"'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 'Terraform Plan Destroy'
+        uses: hashicorp/terraform-github-actions@master
+        with:
+          tf_actions_version: 0.13.3
+          tf_actions_subcommand: 'plan'
+          tf_actions_working_dir: "infrastructure/terraform"
+          tf_actions_comment: false
+          args: '-destroy -out=./destroy-plan'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TF_VAR_key_name: ${{ secrets.key_name }}
+          TF_VAR_inbound_cidr: ${{ secrets.inbound_cidr }}
+          TF_VAR_vpc_id: ${{ secrets.vpc_id }}
+          TF_VAR_subnet_id: ${{ secrets.subnet_id }}
+          TF_VAR_elastic_ip_name: ${{ secrets.elastic_ip_name }}
+          TF_VAR_instance_type: ${{ secrets.instance_type }}
+
+      - name: 'Terraform Apply Destroy'
+        if: github.event.inputs.action == 'destroy'
+        uses: hashicorp/terraform-github-actions@master
+        with:
+          tf_actions_version: 0.13.3
+          tf_actions_subcommand: 'apply'
+          tf_actions_comment: false
+          tf_actions_working_dir: "infrastructure/terraform"
+          args: './destroy-plan'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
