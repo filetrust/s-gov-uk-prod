@@ -5,11 +5,11 @@ and deploy applications to remote virtual machines such as AWS EC2 or Azure virt
 
 ## The workflows can be reused and extended for following use cases:
 
-1. [Deploy infrastructure to AWS](https://github.com/pranaysahith/s-gov-uk-prod/blob/master/use-cases.md#1-deploy-infrastructure-to-aws)
-2. Delete infrastructure from AWS 
-3. Deploy an application to a virtual machine
-4. Re-deploy an application to a virtual machine
-5. Stop EC2 virtual machines at a scheduled time
+1. [Deploy infrastructure to AWS](#1-deploy-infrastructure-to-aws)
+2. [Delete infrastructure from AWS](#2-delete-infrastructure-from-aws)
+3. [Deploy an application to a virtual machine](#3-deploy-an-application-to-a-virtual-machine)
+4. [Re-deploy an application to a virtual machine](#4-re-deploy-an-application-to-a-virtual-machine)
+5. [Stop EC2 virtual machines at a scheduled time](#5-stop-ec2-virtual-machines-at-a-scheduled-time)
 
 ## 1. Deploy infrastructure to AWS 
 The infrastructure as code is written using terraform and located at `infrastructure/terraform` directory in this repo. It uses remote S3 backend to store state and hence deployments can be done iteratively to add more resources.
