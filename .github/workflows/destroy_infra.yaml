@@ -2,7 +2,7 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: 'Pass destroy as action to delete infra'
+        description: "Pass input as 'destroy' to delete infra"
         required: true
         default: 'plan'
 
@@ -18,7 +18,6 @@ jobs:
         uses: actions/checkout@v1
 
       - name: Configure AWS credentials
-        if: github.event.action == 'ecs_end'
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
