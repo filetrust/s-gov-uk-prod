@@ -5,7 +5,7 @@ and deploy applications to remote virtual machines such as AWS EC2 or Azure virt
 
 ## The workflows can be reused and extended for following use cases:
 
-1. Deploy infrastructure to AWS 
+1. [Deploy infrastructure to AWS](https://github.com/pranaysahith/s-gov-uk-prod/blob/master/use-cases.md#1-deploy-infrastructure-to-aws)
 2. Delete infrastructure from AWS 
 3. Deploy an application to a virtual machine
 4. Re-deploy an application to a virtual machine
