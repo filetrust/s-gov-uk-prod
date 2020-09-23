@@ -1,0 +1,203 @@
+AWSTemplateFormatVersion: 2010-09-09
+Metadata:
+  License: GNU GPLv3
+Description: >-
+  AWS CloudFormation script that deploy https://github.com/filetrust/k8-ova/tree/master/Release01/revproxy.tar.gz
+Parameters:
+  KeyName:
+    Description: EC2 ssh access key
+    Type: 'AWS::EC2::KeyPair::KeyName'
+  Ubuntu18AmiId:
+    Description: >-
+      AMI ID for Ubuntu 18 (defaults to AMI ID for N. Virginia, if region other
+      than N. Virginia is selected then AMI ID must be changed!)
+    Type: String
+    Default: ami-06b263d6ceff0b3dd
+Mappings:
+  Network:
+    VPC:
+      range: 10.0.1.0/24
+    PublicSubnet:
+      range: 10.0.1.0/25
+    PublicServer:
+      ip: 10.0.1.4
+Resources:
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      CidrBlock: !FindInMap 
+        - Network
+        - VPC
+        - range
+      Tags:
+        - Key: Stack
+          Value: !Sub '${AWS::StackName}'
+        - Key: Name
+          Value: !Sub '${AWS::StackName}__VPC'
+  PublicSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap 
+        - Network
+        - PublicSubnet
+        - range
+      AvailabilityZone: !Select 
+        - 0
+        - !GetAZs 
+          Ref: 'AWS::Region'
+      Tags:
+        - Key: Stack
+          Value: !Sub '${AWS::StackName}'
+        - Key: Name
+          Value: !Sub '${AWS::StackName}__PublicSubnet'
+  PublicServer:
+    Type: 'AWS::EC2::Instance'
+    DependsOn:
+      - RouteTableForPublicSubnetRoute1
+    Metadata:
+      'AWS::CloudFormation::Init':
+        config:
+          packages:
+            apt:
+              mc: []
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT5M
+    Properties:
+      AvailabilityZone: !Select 
+        - 0
+        - !GetAZs 
+          Ref: 'AWS::Region'
+      ImageId: !Ref Ubuntu18AmiId
+      InstanceType: t2.micro
+      KeyName: !Ref KeyName
+      UserData: !Base64 
+        'Fn::Sub': |
+          #!/bin/bash
+          apt-get update
+          echo "Install package manager for Python packages"
+          apt-get install python-pip -y
+          echo "Install AWS CF helper scripts"
+          pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
+          apt-get update install -y mc
+          curl https://get.docker.com -o /tmp/docker-installer.sh
+          chmod +x /tmp/docker-installer.sh
+          sudo /tmp/docker-installer.sh
+          sudo systemctl enable --now docker
+          sudo useradd -m -p $6$GZT5nssfvanFhk/q$w0R3RBjN4CP2uSLSqVRlRDDkrJbrXLDFwIQfVsH678PHQCIqXtZG3Q7SyBq1J5RRRekuFGZ2xWOMOyyx2PoEt0 -s /bin/bash user
+          sudo usermod -aG docker ubuntu
+          sudo usermod -aG docker user
+          sudo curl -L "https://github.com/docker/compose/releases/download/1.27.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          git clone https://github.com/filetrust/k8-ova.git /tmp/k8-ova
+          cd /tmp/k8-ova/Release01/
+          sudo cp  revproxy.tar.gz /home/user/
+          cd /home/user/
+          sudo tar xzvf revproxy.tar.gz
+          cd reverse-proxy-icap-docker
+          echo 'secret' | sudo -S -E su user -c 'docker-compose up -d'
+          echo "Start cfn-init"
+          cfn-init --region ${AWS::Region} --stack ${AWS::StackId} --resource PublicServer
+          echo "All done send success signal"
+          cfn-signal --region ${AWS::Region} --stack ${AWS::StackId} --resource PublicServer --exit-code $?
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeleteOnTermination: true
+          SubnetId: !Ref PublicSubnet
+          PrivateIpAddress: !FindInMap 
+            - Network
+            - PublicServer
+            - ip
+          Description: Primary network interface
+          DeviceIndex: 0
+          GroupSet:
+            - !Ref SSHSecurityGroup
+            - !Ref ServerSecurityGroup
+      Tags:
+        - Key: Stack
+          Value: !Sub '${AWS::StackName}'
+        - Key: Name
+          Value: !Sub '${AWS::StackName}__PublicServer'
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: Stack
+          Value: !Sub '${AWS::StackName}'
+        - Key: Name
+          Value: !Sub '${AWS::StackName}__InternetGateway'
+  VPCGatewayAttachment:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+  NATGateway:
+    Type: 'AWS::EC2::NatGateway'
+    DependsOn: ElasticIP
+    Properties:
+      AllocationId: !GetAtt 
+        - ElasticIP
+        - AllocationId
+      SubnetId: !Ref PublicSubnet
+  ElasticIP:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+  RouteTableForPublicSubnet:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Stack
+          Value: !Sub '${AWS::StackName}'
+        - Key: Name
+          Value: !Sub '${AWS::StackName}__RouteTableForPublicSubnet'
+  RouteTableForPublicSubnetAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref RouteTableForPublicSubnet
+  RouteTableForPublicSubnetRoute1:
+    Type: 'AWS::EC2::Route'
+    DependsOn: InternetGateway
+    Properties:
+      RouteTableId: !Ref RouteTableForPublicSubnet
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  SSHSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable SSH access via port 22
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 22
+          IpProtocol: tcp
+          ToPort: 22
+      Tags:
+        - Key: Stack
+          Value: !Sub '${AWS::StackName}'
+        - Key: Name
+          Value: !Sub '${AWS::StackName}__SSHSecurityGroup'
+  ServerSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Allow to access web application
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 10.0.1.0/24
+      Tags:
+        - Key: Stack
+          Value: !Sub '${AWS::StackName}'
+        - Key: Name
+          Value: !Sub '${AWS::StackName}__ServerSecurityGroup'
