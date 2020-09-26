@@ -1,0 +1,75 @@
+{
+    "pipeline": {
+        "roleArn": "arn:aws:iam::938576707481:role/service-role/AWSCodePipelineServiceRole-us-east-1-ReverseProxy_Pipeline",
+        "stages": [
+            {
+                "name": "Source",
+                "actions": [
+                    {
+                        "inputArtifacts": [],
+                        "name": "Source",
+                        "region": "us-east-1",
+                        "namespace": "SourceVariables",
+                        "actionTypeId": {
+                            "category": "Source",
+                            "owner": "ThirdParty",
+                            "version": "1",
+                            "provider": "GitHub"
+                        },
+                        "outputArtifacts": [
+                            {
+                                "name": "SourceArtifact"
+                            }
+                        ],
+                        "configuration": {
+                            "Owner": "MariuszFerdyn",
+                            "Repo": "s-gov-uk-prod",
+                            "PollForSourceChanges": "true",
+                            "Branch": "master",
+                            "OAuthToken": "****"
+                        },
+                        "runOrder": 1
+                    }
+                ]
+            },
+            {
+                "name": "Deploy",
+                "actions": [
+                    {
+                        "inputArtifacts": [
+                            {
+                                "name": "SourceArtifact"
+                            }
+                        ],
+                        "name": "Deploy",
+                        "region": "us-east-1",
+                        "namespace": "DeployVariables",
+                        "actionTypeId": {
+                            "category": "Deploy",
+                            "owner": "AWS",
+                            "version": "1",
+                            "provider": "CodeDeploy"
+                        },
+                        "outputArtifacts": [],
+                        "configuration": {
+                            "ApplicationName": "ReverseProxy_App",
+                            "DeploymentGroupName": "ReverseProxy_DG"
+                        },
+                        "runOrder": 1
+                    }
+                ]
+            }
+        ],
+        "artifactStore": {
+            "type": "S3",
+            "location": "codepipeline-us-east-1-387905593991"
+        },
+        "name": "ReverseProxy_Pipeline",
+        "version": 1
+    },
+    "metadata": {
+        "pipelineArn": "arn:aws:codepipeline:us-east-1:938576707481:ReverseProxy_Pipeline",
+        "updated": 1600726527.369,
+        "created": 1600726527.369
+    }
+}

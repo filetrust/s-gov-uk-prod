@@ -1,5 +1,7 @@
 # s-gov-uk-prod
 
+appsync.yml and /scripts are necessary to use by AWS Code Deploy integrated with GitHub – it must be in the root of repository.
+
 ## Add below secrets to the Github secrets:
 
 ### Infra secrets:
@@ -35,4 +37,3 @@
 2. It accepts input value for "action" and its default value is "plan"/
 3. If "plan" is passed as input, it will only plan the destroy and print the `terraform plan -destroy` output
 4. If "destroy" is passed as the input, it will delete the infrastructure from the AWS.
-

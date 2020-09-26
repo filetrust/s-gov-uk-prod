@@ -1,0 +1,19 @@
+#!/usr/bin/python3
+import sys, re
+rootdomain = 'ROOT_DOMAIN'
+pattern = re.compile(r'(http(s)?:\/\/(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]).'+rootdomain+r'\/')
+
+while True:
+    try:
+        origline = input()
+    except EOFError:
+        sys.exit(0)
+    if not origline.strip():
+        continue
+    url = origline.split()[0]
+    newurl = pattern.sub(r'\1/',url) # Removing the root domain
+    #if '127.0.0.2/' in origline.split()[1] and newurl.startswith('http://'): # Checking if https should be used
+    newurl='https://'+newurl[7:] # 
+    with open('/var/log/squid/urlrewrite.log','a') as fp:
+        fp.write('> '+origline+'\n'+'< '+newurl+'\n')
+    print(newurl)
